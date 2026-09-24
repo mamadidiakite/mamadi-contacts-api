@@ -61,3 +61,14 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 /generated/prisma
 
 /src/generated
+
+
+# Postman
+.postman/
+postman/
+
+# Outils d'assistants IA
+.agents/
+.claude/
+.windsurf/
+skills-lock.json
