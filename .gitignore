@@ -72,3 +72,5 @@ postman/
 .claude/
 .windsurf/
 skills-lock.json
+
+/uploads

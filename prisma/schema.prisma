@@ -19,9 +19,10 @@ model User {
   email     String    @unique
   password  String
   name      String?
+  photoUrl  String?
 
   contacts  Contact[]
-  
+
   createdAt DateTime  @default(now())
 }
 
@@ -33,6 +34,7 @@ model Contact {
   notes      String?
   group      ContactGroup @default(AUTRE)
   isFavorite Boolean      @default(false)
+  photoUrl   String?
 
   user       User         @relation(fields: [userId], references: [id])
 

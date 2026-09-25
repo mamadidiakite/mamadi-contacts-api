@@ -1,3 +1,5 @@
+import type { MulterFile } from '../common/photo-storage.js';
+
 import {
   Body,
   Controller,
@@ -10,33 +12,32 @@ import {
   Post,
   Query,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { ContactGroup } from '../generated/prisma/client.js';
+import { PHOTO_MAX_SIZE, photoValidationPipe } from '../common/photo-storage.js';
 import { ContactsService } from './contacts.service.js';
 import { CreateContactDto } from './dto/create-contact.dto.js';
 import { UpdateContactDto } from './dto/update-contact.dto.js';
 
-// Ce que JwtStrategy place dans req.user
 interface AuthRequest {
   user: { userId: string; email: string };
 }
 
-// Toutes les routes ci-dessous commencent par /contacts
-// et sont réservées aux utilisateurs connectés (le vigile)
 @UseGuards(JwtAuthGuard)
 @Controller('contacts')
 export class ContactsController {
   constructor(private contacts: ContactsService) {}
 
-  // POST /contacts
   @Post()
   create(@Req() req: AuthRequest, @Body() dto: CreateContactDto) {
     return this.contacts.create(req.user.userId, dto);
   }
 
-  // GET /contacts?search=awa&group=AMI
   @Get()
   findAll(
     @Req() req: AuthRequest,
@@ -47,16 +48,11 @@ export class ContactsController {
     return this.contacts.findAll(req.user.userId, search, group);
   }
 
-  // GET /contacts/:id
   @Get(':id')
-  findOne(
-    @Req() req: AuthRequest,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  findOne(@Req() req: AuthRequest, @Param('id', ParseUUIDPipe) id: string) {
     return this.contacts.findOne(req.user.userId, id);
   }
 
-  // PATCH /contacts/:id
   @Patch(':id')
   update(
     @Req() req: AuthRequest,
@@ -66,12 +62,18 @@ export class ContactsController {
     return this.contacts.update(req.user.userId, id, dto);
   }
 
-  // DELETE /contacts/:id
-  @Delete(':id')
-  remove(
+  @Post(':id/photo')
+  @UseInterceptors(FileInterceptor('photo', { limits: { fileSize: PHOTO_MAX_SIZE } }))
+  uploadPhoto(
     @Req() req: AuthRequest,
     @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile(photoValidationPipe()) file: MulterFile,
   ) {
+    return this.contacts.setPhoto(req.user.userId, id, file);
+  }
+
+  @Delete(':id')
+  remove(@Req() req: AuthRequest, @Param('id', ParseUUIDPipe) id: string) {
     return this.contacts.remove(req.user.userId, id);
   }
 }

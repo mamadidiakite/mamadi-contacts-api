@@ -1,25 +1,38 @@
-import { Injectable } from '@nestjs/common';
+// Le type d'un fichier reçu par multer : on ne garde que les champs utilisés
+import type { MulterFile } from '../common/photo-storage.js';
+
+import { Injectable, NotFoundException } from '@nestjs/common';
 import bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { deletePhoto, savePhoto } from '../common/photo-storage.js';
 
 @Injectable()
 export class UsersService {
-  // NestJS nous donne automatiquement PrismaService (l'accès à la base)
   constructor(private prisma: PrismaService) {}
 
-  // Crée un utilisateur
   async create(email: string, password: string, name?: string) {
-    // On transforme le mot de passe en hash (10 = niveau de complexité)
     const hash = await bcrypt.hash(password, 10);
-
-    // On enregistre le hash, jamais le mot de passe en clair
     return this.prisma.user.create({
       data: { email, password: hash, name },
     });
   }
 
-  // Cherche un utilisateur par son email (servira pour le login)
   findByEmail(email: string) {
     return this.prisma.user.findUnique({ where: { email } });
+  }
+
+  async setPhoto(userId: string, file: MulterFile)  {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Utilisateur introuvable');
+    }
+    const photoUrl = await savePhoto(file);
+    await deletePhoto(user.photoUrl);
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { photoUrl },
+      select: { id: true, email: true, name: true, photoUrl: true },
+    });
   }
 }
